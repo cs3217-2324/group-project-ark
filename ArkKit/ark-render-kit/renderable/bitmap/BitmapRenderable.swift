@@ -1,0 +1,1 @@
+protocol BitmapRenderable: AbstractBitmap, Renderable {}

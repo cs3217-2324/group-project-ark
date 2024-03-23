@@ -1,0 +1,1 @@
+protocol PanRenderable: AbstractPannable, Renderable {}

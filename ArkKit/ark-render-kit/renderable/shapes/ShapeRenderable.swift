@@ -1,0 +1,1 @@
+protocol ShapeRenderable: AbstractShape, Renderable {}

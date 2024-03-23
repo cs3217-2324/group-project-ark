@@ -1,0 +1,36 @@
+# This workflow will build a Swift project
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-swift
+
+name: CI (Pull Request)
+
+on:
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  SwiftLint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        # https://github.com/realm/SwiftLint
+        # https://github.com/norio-nomura/action-swiftlint
+      - name: SwiftLint
+        uses: norio-nomura/action-swiftlint@3.2.1
+        env:
+          DIFF_BASE: ${{ github.base_ref }}
+        with:
+          args: --config .swiftlint.yml --strict
+  Build:
+    runs-on: macos-latest
+    # https://github.com/slashmo/install-swift install specified swift version
+    steps:
+      - name: Install Swift
+        uses: slashmo/install-swift@v0.1.0
+        with:
+          version: 5.5
+      - uses: actions/checkout@v3
+      - name: Build
+        run: swift build -v
+      - name: Run tests
+        run: swift test -v
