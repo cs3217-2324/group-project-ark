@@ -1,0 +1,1 @@
+protocol TapRenderable: AbstractTappable, Renderable {}
