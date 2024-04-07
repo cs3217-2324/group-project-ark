@@ -1,22 +1,48 @@
 import Foundation
 
+struct TankCreationContext {
+    let position: CGPoint
+    let rotation: CGFloat
+    let tankIndex: Int
+    let zPosition: Double
+    let hp: Double
+}
+
+struct TankBallCreationContext {
+    let position: CGPoint
+    let radius: CGFloat
+    let velocity: CGVector
+    let angle: CGFloat
+    let zPosition: Double
+}
+
+struct TankShootButtonCreationContext {
+    let position: CGPoint
+    let tankId: Int
+    let zPosition: Double
+    let rotate: Bool
+}
+
 enum TankGameEntityCreator {
+    static func createHpBarComponent(hp: Double, zPosition: Double) -> RectRenderableComponent {
+        RectRenderableComponent(width: hp, height: 10)
+            .modify(fillInfo: ShapeFillInfo(color: .red), strokeInfo: ShapeStrokeInfo(lineWidth: 3, color: .black))
+            .zPosition(zPosition + 1)
+            .layer(.screen)
+    }
+
     @discardableResult
-    static func createTank(at position: CGPoint,
-                           rotation: CGFloat,
-                           tankIndex: Int,
-                           in ecsContext: ArkECSContext,
-                           zPosition: Double) -> Entity {
+    static func createTank(with tankContext: TankCreationContext, in ecsContext: ArkECSContext) -> Entity {
         let tankEntity = ecsContext.createEntity(with: [
-            BitmapImageRenderableComponent(imageResourcePath: "tank_\(tankIndex)",
+            BitmapImageRenderableComponent(imageResourcePath: "tank_\(tankContext.tankIndex)",
                                            width: 80,
                                            height: 100)
-                .center(position)
-                .rotation(rotation)
-                .zPosition(zPosition)
+            .center(tankContext.position)
+            .rotation(tankContext.rotation)
+            .zPosition(tankContext.zPosition)
                 .scaleAspectFill(),
-            PositionComponent(position: position),
-            RotationComponent(angleInRadians: rotation),
+            PositionComponent(position: tankContext.position),
+            RotationComponent(angleInRadians: tankContext.rotation),
             PhysicsComponent(shape: .rectangle, size: CGSize(width: 80, height: 100),
                              isDynamic: false, allowsRotation: false, restitution: 0,
                              categoryBitMask: TankGamePhysicsCategory.tank,
@@ -26,14 +52,17 @@ enum TankGameEntityCreator {
                              contactTestBitMask: TankGamePhysicsCategory.ball |
                              TankGamePhysicsCategory.tank |
                              TankGamePhysicsCategory.wall |
-                             TankGamePhysicsCategory.water)
+                             TankGamePhysicsCategory.water),
+            createHpBarComponent(hp: tankContext.hp, zPosition: tankContext.zPosition + 1),
+            TankHpComponent(hp: tankContext.hp, maxHp: tankContext.hp)
         ])
+
         return tankEntity
     }
 
     @discardableResult
     static func createJoyStick(center: CGPoint,
-                               tankEntity: Entity,
+                               tankId: Int,
                                in ecsContext: ArkECSContext,
                                eventContext: ArkEventContext,
                                zPosition: Double) -> Entity {
@@ -46,55 +75,66 @@ enum TankGameEntityCreator {
                 .zPosition(zPosition)
                 .layer(.screen)
                 .onPanStart { angle, mag in
-                    let tankMoveEventData = TankMoveEventData(name: "TankMoveEvent", tankEntity: tankEntity,
+                    let tankMoveEventData = TankMoveEventData(name: "TankMoveEvent", tankId: tankId,
                                                               angle: angle, magnitude: mag)
-                    var tankMoveEvent: any ArkEvent = TankMoveEvent(eventData: tankMoveEventData)
-                    eventContext.emit(&tankMoveEvent)
+                    let tankMoveEvent: any ArkEvent = TankMoveEvent(eventData: tankMoveEventData)
+                    eventContext.emit(tankMoveEvent)
                 }
                 .onPanChange { angle, mag in
-                    let tankMoveEventData = TankMoveEventData(name: "TankMoveEvent", tankEntity: tankEntity,
+                    let tankMoveEventData = TankMoveEventData(name: "TankMoveEvent", tankId: tankId,
                                                               angle: angle, magnitude: mag)
-                    var tankMoveEvent: any ArkEvent = TankMoveEvent(eventData: tankMoveEventData)
-                    eventContext.emit(&tankMoveEvent)
+                    let tankMoveEvent: any ArkEvent = TankMoveEvent(eventData: tankMoveEventData)
+                    eventContext.emit(tankMoveEvent)
                 }
                 .onPanEnd { _, _ in
-                    let tankMoveEventData = TankMoveEventData(name: "TankMoveEvent", tankEntity: tankEntity,
+                    let tankMoveEventData = TankMoveEventData(name: "TankMoveEvent", tankId: tankId,
                                                               angle: 0, magnitude: 0)
-                    var tankMoveEvent: any ArkEvent = TankMoveEvent(eventData: tankMoveEventData)
-                    eventContext.emit(&tankMoveEvent)
+                    let tankMoveEvent: any ArkEvent = TankMoveEvent(eventData: tankMoveEventData)
+                    eventContext.emit(tankMoveEvent)
                 }
         ])
     }
 
-    static func createShootButton(at position: CGPoint, tankEntity: Entity, in ecsContext: ArkECSContext,
-                                  eventContext: ArkEventContext, zPosition: Double) {
+    static func createShootButton(with buttonContext: TankShootButtonCreationContext,
+                                  in ecsContext: ArkECSContext,
+                                  eventContext: ArkEventContext) -> Entity {
         ecsContext.createEntity(with: [
             ButtonRenderableComponent(width: 50, height: 50)
-                .shouldRerender { _, _ in false }
-                .center(position)
-                .zPosition(zPosition)
-                .onTap {
-                    let tankShootEventData = TankShootEventData(name: "TankShootEvent", tankEntity: tankEntity)
-                    var tankShootEvent: any ArkEvent = TankShootEvent(eventData: tankShootEventData)
-                    eventContext.emit(&tankShootEvent)
+                .shouldRerender { old, new in
+                    old.center != new.center
                 }
+                .center(buttonContext.position)
+                .layer(.screen)
+                .zPosition(buttonContext.zPosition)
+                .onTap {
+                    let tankShootEventData = TankShootEventData(name: "TankShootEvent", tankId: buttonContext.tankId)
+                    let tankShootEvent: any ArkEvent = TankShootEvent(eventData: tankShootEventData)
+                    eventContext.emit(tankShootEvent)
+                }
+                .label("Fire!", color: .blue)
+                .borderRadius(20)
+                .borderColor(.red)
+                .borderWidth(0.5)
+                .background(color: .green)
+                .padding(top: 4, bottom: 4, left: 2, right: 2)
+                .rotation(buttonContext.rotate ? .pi : 0)
         ])
     }
 
-    static func createBall(position: CGPoint, radius: CGFloat,
-                           velocity: CGVector, angle: CGFloat,
-                           in ecsContext: ArkECSContext, zPosition: Double) {
+    static func createBall(with ballContext: TankBallCreationContext,
+                           in ecsContext: ArkECSContext) {
+        let radius = ballContext.radius
         ecsContext.createEntity(with: [
             BitmapImageRenderableComponent(imageResourcePath: "ball", width: radius * 2.2, height: radius * 2.2)
-                .center(position)
-                .zPosition(zPosition)
+                .center(ballContext.position)
+                .zPosition(ballContext.zPosition)
                 .scaleAspectFill(),
-            PositionComponent(position: position),
-            RotationComponent(angleInRadians: angle),
+            PositionComponent(position: ballContext.position),
+            RotationComponent(angleInRadians: ballContext.angle),
             PhysicsComponent(shape: .circle,
                              radius: radius,
                              mass: 1,
-                             velocity: velocity,
+                             velocity: ballContext.velocity,
                              isDynamic: true,
                              allowsRotation: true, restitution: 0.8,
                              categoryBitMask: TankGamePhysicsCategory.ball,
@@ -143,7 +183,13 @@ enum TankGameEntityCreator {
                                  background: [[Int]]) {
         let strategies: [TankGameTerrainStrategy] = [TankGameMap1Strategy(),
                                                      TankGameMap2Strategy(),
-                                                     TankGameMap3Strategy()]
+                                                     TankGameMap3Strategy(),
+                                                     TankGameTile1AStrategy(),
+                                                     TankGameTile1BStrategy(),
+                                                     TankGameTile1CStrategy(),
+                                                     TankGameTile2AStrategy(),
+                                                     TankGameTile2BStrategy(),
+                                                     TankGameTile2CStrategy()]
         let mapBuilder = TankGameMapBuilder(width: width, height: height,
                                             strategies: strategies,
                                             ecsContext: ecsContext,
@@ -152,7 +198,8 @@ enum TankGameEntityCreator {
     }
 
     static func createTerrainObjects(in ecsContext: ArkECSContext, objectsSpecs: [TankSpecification]) {
-        let strategies: [TankGameTerrainObjectStrategy] = [TankGameLakeStrategy(), TankGameStoneStrategy()]
+        let strategies: [TankGameTerrainObjectStrategy] = [TankGameLakeStrategy(),
+                                                           TankGameStoneStrategy(), TankGameHealthPackStrategy()]
         let terrainObjectBuilder = TankGameTerrainObjectBuilder(strategies: strategies, ecsContext: ecsContext)
 
         terrainObjectBuilder.buildObjects(from: objectsSpecs)

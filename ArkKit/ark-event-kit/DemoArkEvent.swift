@@ -22,7 +22,6 @@ struct DemoArkEvent: ArkEvent {
 
     static var id = UUID()  // Unique identifier for the DemoArkEvent type.
     var eventData: ArkEventData?  // Optional event data.
-    var timestamp = Date()
     var priority: Int?
 
     /// Initializes a new DemoArkEvent with optional event data.
@@ -37,7 +36,7 @@ struct DemoArkEvent: ArkEvent {
 struct DemoArkEventTest {
     /// Subscribes to DemoArkEvent and handles it by printing event data.
     /// - Parameter em: The ArkEventManager instance used for managing events.
-    static func testSubscribe(_ em: ArkEventContext) {
+    static func testSubscribe(_ em: ArkEventManager) {
         em.subscribe(to: DemoArkEvent.id) { (event: ArkEvent) -> Void in
             // Cast the generic ArkEvent to a specific type to access its data.
             guard let eventData = event.eventData as? DemoArkEventData else {
@@ -59,4 +58,4 @@ struct DemoArkEventTest {
 // let em = ArkEventManager()
 // let testEvent = DemoArkEvent(eventData: DemoArkEventData(name: "Hi", number: 4))
 // DemoArkEventTest.testSubscribe(em)
-// em.emit(&DemoArkEvent.id)
+// em.emit(DemoArkEvent.id)

@@ -1,49 +1,54 @@
 import Foundation
 
-class ArkGameCoordinator {
-    let rootView: any AbstractParentView
+class ArkGameCoordinator<View> {
+    let rootView: any AbstractParentView<View>
     let arkState: ArkState
-    let canvasFrame: CGRect
-    var gameLoop: AbstractArkSimulator
-    var arkSceneUpdateDelegate: ArkSceneUpdateDelegate?
+    let displayContext: any DisplayContext
+    var gameLoop: GameLoop
 
-    init(rootView: any AbstractParentView, arkState: ArkState, canvasFrame: CGRect, gameLoop: AbstractArkSimulator) {
+    var canvasRenderer: (any RenderableBuilder<View>)?
+
+    init(rootView: any AbstractParentView<View>,
+         arkState: ArkState,
+         displayContext: any DisplayContext,
+         gameLoop: GameLoop,
+         canvasRenderer: (any RenderableBuilder<View>)? = nil
+    ) {
         self.rootView = rootView
         self.arkState = arkState
-        self.canvasFrame = canvasFrame
+        self.displayContext = displayContext
         self.gameLoop = gameLoop
+        self.canvasRenderer = canvasRenderer
     }
 
     func start() {
         // initiate key M, V, VM
-        let arkGameModel = ArkGameModel(gameState: arkState, canvasFrame: canvasFrame)
-        let arkViewController = ArkUIKitViewController()
+        guard var arkView = ArkViewFactory.generateView(rootView) else {
+            return
+        }
+        let canvasContext = ArkCanvasContext(ecs: arkState.arkECS,
+                                             arkView: arkView)
+        let cameraContext = ArkCameraContext(ecs: arkState.arkECS,
+                                             displayContext: displayContext)
+        let arkGameModel = ArkGameModel(gameState: arkState,
+                                        canvasContext: canvasContext,
+                                        cameraContext: cameraContext)
         let arkViewModel = ArkViewModel(gameModel: arkGameModel)
 
         // inject dependencies between M, V, VM
-        arkViewController.viewModel = arkViewModel
-        arkViewController.gameLoop = gameLoop
-        arkViewModel.viewRendererDelegate = arkViewController
-        arkViewModel.viewDelegate = arkViewController
-        arkViewModel.arkSceneUpdateDelegate = self
-        self.gameLoop.gameScene.sceneUpdateDelegate = arkViewModel
+        arkView.viewModel = arkViewModel
+        arkViewModel.viewRendererDelegate = arkView
+        arkViewModel.viewDelegate = arkView
+
+        // inject dependencies between game loop and view
+        arkView.gameLoop = gameLoop
+        gameLoop.updateGameWorldDelegate = arkView
 
         // push view-controller to rootView
-        rootView.pushView(arkViewController, animated: false)
-        arkViewController.didMove(to: rootView)
-    }
-}
+        rootView.pushView(arkView, animated: false)
+        arkView.didMove(to: rootView)
 
-extension ArkGameCoordinator: ArkSceneUpdateDelegate {
-    func didContactBegin(between entityA: Entity, and entityB: Entity) {
-        arkSceneUpdateDelegate?.didContactBegin(between: entityA, and: entityB)
-    }
-
-    func didContactEnd(between entityA: Entity, and entityB: Entity) {
-        arkSceneUpdateDelegate?.didContactEnd(between: entityA, and: entityB)
-    }
-
-    func didFinishUpdate(_ deltaTime: TimeInterval) {
-        arkSceneUpdateDelegate?.didFinishUpdate(deltaTime)
+        // inject renderer dependency into arkView
+        arkView.renderableBuilder = canvasRenderer
     }
 }

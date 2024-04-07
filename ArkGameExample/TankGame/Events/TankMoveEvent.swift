@@ -7,17 +7,16 @@
 
 import Foundation
 
-struct TankMoveEventData: ArkEventData {
+struct TankMoveEventData: ArkSerializableEventData {
     var name: String
-    var tankEntity: Entity
+    var tankId: Int
     var angle: Double
     var magnitude: Double
 }
 
-struct TankMoveEvent: ArkEvent {
+struct TankMoveEvent: ArkSerializableEvent {
     static var id = UUID()
     var eventData: TankMoveEventData
-    var timestamp = Date()
     var priority: Int?
 
     init(eventData: TankMoveEventData, priority: Int? = nil) {

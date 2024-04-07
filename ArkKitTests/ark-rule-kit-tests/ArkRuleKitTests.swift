@@ -17,8 +17,8 @@ class ArkRuleKitTests: XCTestCase {
 
     func testArkRuleInit_shouldInit() {
         let mockAction = MockAction<EventStub>()
-        let arkRule = ArkRule(event: EventStub.id, action: mockAction)
-        XCTAssertEqual(arkRule.event, EventStub.id, "event id should match")
+        let arkRule = ArkRule(trigger: EventStub.id, action: mockAction)
+        XCTAssertEqual(arkRule.trigger, EventStub.id, "event id should match")
         XCTAssertTrue(arkRule.action is MockAction<EventStub>)
     }
 
@@ -29,8 +29,11 @@ class ArkRuleKitTests: XCTestCase {
                                              display: MockDisplayContext(),
                                              audio: MockAudioContext())
         let mockAction = MockAction<EventStub>()
-        let arkRule = ArkRule(event: EventStub.id, action: mockAction)
-        arkRule.action.execute(eventStub, context: actionContext)
+        let arkRule = ArkRule(trigger: EventStub.id, action: mockAction)
+        guard let action = arkRule.action as? MockAction<EventStub> else {
+            return
+        }
+        action.execute(eventStub, context: actionContext)
         XCTAssertEqual(mockAction.executedEvents.count, 1,
                        "Action should have been executed once")
         XCTAssertEqual(mockAction.executedEvents[0].event.eventData.name,
@@ -39,7 +42,7 @@ class ArkRuleKitTests: XCTestCase {
     }
 
     /// INTEGRATION TESTS
-    func testForeverExecution_shouldExecuteTwice() {
+    func testArkActionExecution_shouldExecute() {
         let eventManager = ArkEventManager()
         var executedEvents: [EventStub] = []
 
@@ -47,8 +50,8 @@ class ArkRuleKitTests: XCTestCase {
             executedEvents.append(event)
         }
 
-        let forever = Forever(mockCallback)
-        var eventStub = EventStub()
+        let forever = ArkEventAction(callback: mockCallback)
+        let eventStub = EventStub()
         let actionContext = ArkActionContext(ecs: MockECSContext(),
                                              events: eventManager,
                                              display: MockDisplayContext(),
@@ -59,39 +62,11 @@ class ArkRuleKitTests: XCTestCase {
             }
             forever.execute(event, context: actionContext)
         })
-        eventManager.emit(&eventStub)
+        eventManager.emit(eventStub)
         eventManager.processEvents()
         XCTAssertEqual(executedEvents.count, 1, "Callback should be called")
-        eventManager.emit(&eventStub)
+        eventManager.emit(eventStub)
         eventManager.processEvents()
         XCTAssertEqual(executedEvents.count, 2, "Callback should be called")
-    }
-
-    func testOnceExecution_shouldExecuteOnce() {
-        let eventManager = ArkEventManager()
-        var executedEvents: [EventStub] = []
-
-        let mockCallback: ActionCallback<EventStub> = { event, _ in
-            executedEvents.append(event)
-        }
-
-        let once = Once(mockCallback)
-        var eventStub = EventStub()
-        let actionContext = ArkActionContext(ecs: MockECSContext(),
-                                             events: eventManager,
-                                             display: MockDisplayContext(),
-                                             audio: MockAudioContext())
-        eventManager.subscribe(to: EventStub.id, { event in
-            guard let event = event as? EventStub else {
-                return
-            }
-            once.execute(event, context: actionContext)
-        })
-        eventManager.emit(&eventStub)
-        eventManager.processEvents()
-        XCTAssertEqual(executedEvents.count, 1, "Callback should be called")
-        eventManager.emit(&eventStub)
-        eventManager.processEvents()
-        XCTAssertEqual(executedEvents.count, 1, "Callback should be called")
     }
 }

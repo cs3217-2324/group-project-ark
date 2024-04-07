@@ -7,13 +7,11 @@
 
 import Foundation
 
-typealias ArkEventID = UUID
+typealias ArkEventTypeIdentifier = ObjectIdentifier
 
 protocol ArkEvent<Data> {
     associatedtype Data = ArkEventData
 
-    static var id: ArkEventID { get }
     var eventData: Data { get }
-    var timestamp: Date { get set }
     var priority: Int? { get set }
 }

@@ -9,12 +9,21 @@ class ArkECS {
         self.systemManager = SystemManager()
     }
 
+    func startUp() {
+        self.systemManager.startUp()
+    }
+
     func update(deltaTime: TimeInterval) {
         systemManager.update(deltaTime: deltaTime, arkECS: self)
+    }
+
+    func cleanUp() {
+        self.systemManager.cleanUp()
     }
 }
 
 extension ArkECS: ArkECSContext {
+
     @discardableResult
     func createEntity() -> Entity {
         entityManager.createEntity()
@@ -28,8 +37,8 @@ extension ArkECS: ArkECSContext {
         entityManager.upsertComponent(component, to: entity)
     }
 
-    func removeComponent<T>(_ componentType: T.Type, from entity: Entity) where T: Component {
-        entityManager.removeComponent(ofType: componentType, from: entity)
+    func removeComponent<T>(ofType type: T.Type, from entity: Entity) where T: Component {
+        entityManager.removeComponent(ofType: type, from: entity)
     }
 
     func getComponent<T>(ofType type: T.Type, for entity: Entity) -> T? where T: Component {
@@ -53,7 +62,7 @@ extension ArkECS: ArkECSContext {
         entityManager.getComponents(from: entity)
     }
 
-    func addSystem(_ system: System) {
-        systemManager.add(system)
+    func addSystem(_ system: UpdateSystem, schedule: Schedule = .update, isUnique: Bool = true) {
+        systemManager.add(system, schedule: schedule, isUnique: isUnique)
     }
 }

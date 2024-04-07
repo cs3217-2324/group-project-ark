@@ -1,6 +1,11 @@
 protocol ArkEventContext {
     typealias EventListener = (any ArkEvent) -> Void
+    var delegate: ArkEventContextDelegate? { get set }
 
-    func emit<Event: ArkEvent>(_ event: inout Event)
-    func subscribe(to eventId: ArkEventID, _ listener: @escaping EventListener)
+    func emit<Event: ArkEvent>(_ event: Event)
+    func emitWithoutDelegate<Event: ArkEvent>(_ event: Event)
+}
+
+protocol ArkEventContextDelegate: AnyObject {
+    func didEmitEvent<Event: ArkEvent>(_ event: Event)
 }

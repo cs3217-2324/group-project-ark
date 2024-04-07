@@ -2,7 +2,7 @@ import UIKit
 
 class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     var window: UIWindow?
-    private var ark: Ark?
+    private var ark: (any ArkProtocol)?
 
     func scene(_ scene: UIScene,
                willConnectTo session: UISceneSession,
@@ -18,8 +18,10 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         window.rootViewController = RootViewController()
         window.makeKeyAndVisible()
 //        let arkBlueprint = defineArkBlueprint()
-        let tankGameManager = TankGameManager(frameWidth: 820, frameHeight: 1_180)
-        loadArkBlueprintToScene(tankGameManager.blueprint, window: window)
+//        let tankGameManager = TankGameManager(frameWidth: 820, frameHeight: 1_180)
+        let tankRaceGame = TankRaceGame()
+        tankRaceGame.load()
+        loadArkBlueprintToScene(tankRaceGame.blueprint, window: window)
     }
 
     func sceneDidDisconnect(_ scene: UIScene) {
@@ -53,8 +55,8 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 }
 
 extension SceneDelegate {
-    func loadArkBlueprintToScene(_ blueprint: ArkBlueprint, window: UIWindow) {
-        guard let rootView = window.rootViewController as? AbstractRootView else {
+    func loadArkBlueprintToScene<AudioEnum: ArkAudioEnum>(_ blueprint: ArkBlueprint<AudioEnum>, window: UIWindow) {
+        guard let rootView = window.rootViewController as? any AbstractRootView<UIView> else {
             return
         }
         ark = Ark(rootView: rootView, blueprint: blueprint)
