@@ -1,10 +1,10 @@
 import Foundation
 
-class ArkViewModel {
-    private let gameModel: ArkGameModel
-    var arkSceneUpdateDelegate: ArkSceneUpdateDelegate?
-    weak var viewRendererDelegate: GameStateRenderer?
-    weak var viewDelegate: AbstractView? {
+class ArkViewModel<T> {
+    private let gameModel: ArkGameModel<T>
+
+    weak var viewRendererDelegate: (any GameStateRenderer<T>)?
+    weak var viewDelegate: (any AbstractView)? {
         didSet {
             guard let currentView = viewDelegate else {
                 return
@@ -20,11 +20,12 @@ class ArkViewModel {
             guard let currentCanvas = canvas, let canvasContext = gameModel.canvasContext else {
                 return
             }
-            viewRendererDelegate?.render(canvas: currentCanvas, with: canvasContext)
+            let canvasToRender = gameModel.cameraContext?.transform(currentCanvas) ?? currentCanvas
+            viewRendererDelegate?.render(canvasToRender, with: canvasContext)
         }
     }
 
-    init(gameModel: ArkGameModel) {
+    init(gameModel: ArkGameModel<T>) {
         self.gameModel = gameModel
     }
 
@@ -39,21 +40,5 @@ class ArkViewModel {
 
     func didScreenResize(_ size: CGSize) {
         gameModel.resizeScreen(size)
-    }
-}
-
-extension ArkViewModel: ArkSceneUpdateDelegate {
-    // Need to push this delegation of events to ArkPhysicsSystem somehow
-    func didContactBegin(between entityA: Entity, and entityB: Entity) {
-        arkSceneUpdateDelegate?.didContactBegin(between: entityA, and: entityB)
-    }
-
-    func didContactEnd(between entityA: Entity, and entityB: Entity) {
-        arkSceneUpdateDelegate?.didContactEnd(between: entityA, and: entityB)
-    }
-
-    func didFinishUpdate(_ deltaTime: TimeInterval) {
-        arkSceneUpdateDelegate?.didFinishUpdate(deltaTime)
-        self.updateGame(for: deltaTime)
     }
 }

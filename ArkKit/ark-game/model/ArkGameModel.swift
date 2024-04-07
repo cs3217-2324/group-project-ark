@@ -1,12 +1,17 @@
 import Foundation
 
-class ArkGameModel {
+class ArkGameModel<T> {
     var gameState: ArkState?
-    var canvasContext: CanvasContext?
+    var canvasContext: (any CanvasContext<T>)?
+    var cameraContext: (any CameraContext)?
 
-    init(gameState: ArkState, canvasFrame: CGRect) {
+    init(gameState: ArkState,
+         canvasContext: any CanvasContext<T>,
+         cameraContext: CameraContext) {
         self.gameState = gameState
-        canvasContext = ArkCanvasContext(ecs: gameState.arkECS, canvasFrame: canvasFrame)
+        self.canvasContext = canvasContext
+        self.cameraContext = cameraContext
+        self.gameState?.startUp()
     }
 
     func updateState(dt: Double) {
@@ -18,11 +23,11 @@ class ArkGameModel {
             name: "DisplayUpdateEvent",
             newSize: size
         )
-        var event = ScreenResizeEvent(eventData: eventData)
-        gameState?.eventManager.emit(&event)
+        let event = ScreenResizeEvent(eventData: eventData)
+        gameState?.eventManager.emit(event)
     }
 
     func retrieveCanvas() -> Canvas? {
-        canvasContext?.getCanvas()
+        canvasContext?.getFlatCanvas()
     }
 }
