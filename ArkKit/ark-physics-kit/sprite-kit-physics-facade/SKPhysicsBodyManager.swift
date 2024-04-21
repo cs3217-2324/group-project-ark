@@ -1,10 +1,10 @@
 import SpriteKit
 
 class SKPhysicsBodyManager {
-    private(set) var entityToPhysicsBodyMap: [Entity: ArkSKPhysicsBody] = [:]
+    private(set) var entityToPhysicsBodyMap: [Entity: any AbstractArkSKPhysicsBody] = [:]
     private var nodeToEntityMap: [SKNode: Entity] = [:]
 
-    func addBody(for entity: Entity, body: ArkSKPhysicsBody) -> Bool {
+    func addBody(for entity: Entity, body: any AbstractArkSKPhysicsBody) -> Bool {
         guard entityToPhysicsBodyMap[entity] == nil, nodeToEntityMap[body.node] == nil else {
             assertionFailure("Entity or Node already exists.")
             return false
@@ -16,13 +16,12 @@ class SKPhysicsBodyManager {
 
     func removeBody(for entity: Entity) {
         guard let body = entityToPhysicsBodyMap.removeValue(forKey: entity) else {
-            assertionFailure("Entity does not exist.")
             return
         }
         nodeToEntityMap.removeValue(forKey: body.node)
     }
 
-    func getBody(for entity: Entity) -> ArkSKPhysicsBody? {
+    func getBody(for entity: Entity) -> (any AbstractArkSKPhysicsBody)? {
         entityToPhysicsBodyMap[entity]
     }
 
@@ -30,19 +29,21 @@ class SKPhysicsBodyManager {
         nodeToEntityMap[node]
     }
 
-    func applyImpulse(_ impulse: CGVector, to entity: Entity) {
+    @discardableResult
+    func applyImpulse(_ impulse: CGVector, to entity: Entity) -> Bool {
         guard let body = entityToPhysicsBodyMap[entity] else {
-            assertionFailure("Entity does not exist.")
-            return
+            return false
         }
         body.applyImpulse(impulse)
+        return true
     }
 
-    func applyAngularImpulse(_ angularImpulse: CGFloat, to entity: Entity) {
+    @discardableResult
+    func applyAngularImpulse(_ angularImpulse: CGFloat, to entity: Entity) -> Bool {
         guard let body = entityToPhysicsBodyMap[entity] else {
-            assertionFailure("Entity does not exist.")
-            return
+            return false
         }
         body.applyAngularImpulse(angularImpulse)
+        return true
     }
 }

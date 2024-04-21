@@ -1,12 +1,29 @@
 import SpriteKit
 
 class SKPhysicsScene: AbstractArkPhysicsScene {
+    private(set) var basePhysicsScene: AbstractSKScene
+    private var physicsBodyManager: SKPhysicsBodyManager
+    private var physicsBodyFactory: AbstractArkSKPhysicsBodyFactory
+
+    init(size: CGSize, delegate: SKSceneDelegate? = nil,
+         basePhysicsScene: AbstractSKScene? = nil,
+         physicsBodyManager: SKPhysicsBodyManager? = nil,
+         gameScene: SKPhysicsScene? = nil,
+         physicsBodyFactory: AbstractArkSKPhysicsBodyFactory? = nil) {
+        self.basePhysicsScene = basePhysicsScene ?? BaseSKScene(size: size)
+        self.basePhysicsScene.delegate = delegate
+        self.physicsBodyManager = physicsBodyManager ?? SKPhysicsBodyManager()
+        self.physicsBodyFactory = physicsBodyFactory ?? ArkSKPhysicsBodyFactory()
+        self.basePhysicsScene.gameScene = gameScene ?? self
+    }
+
     func getCurrentTime() -> TimeInterval {
         basePhysicsScene.currentTime
     }
 
-    private(set) var basePhysicsScene: BaseSKPhysicsScene
-    private var physicsBodyManager: SKPhysicsBodyManager
+    func setGravity(_ gravity: CGVector) {
+        basePhysicsScene.physicsWorld.gravity = gravity
+    }
 
     var sceneContactUpdateDelegate: ArkPhysicsContactUpdateDelegate? {
         get { basePhysicsScene.sceneContactUpdateDelegate }
@@ -16,14 +33,6 @@ class SKPhysicsScene: AbstractArkPhysicsScene {
     var sceneUpdateLoopDelegate: ArkPhysicsSceneUpdateLoopDelegate? {
         get { basePhysicsScene.sceneUpdateLoopDelegate }
         set { basePhysicsScene.sceneUpdateLoopDelegate = newValue }
-    }
-
-    init(size: CGSize, delegate: SKSceneDelegate? = nil) {
-        self.basePhysicsScene = BaseSKPhysicsScene(size: size)
-        self.basePhysicsScene.delegate = delegate
-        self.physicsBodyManager = SKPhysicsBodyManager()
-        self.basePhysicsScene.gameScene = self
-
     }
 
     func getDeltaTime() -> TimeInterval {
@@ -39,7 +48,7 @@ class SKPhysicsScene: AbstractArkPhysicsScene {
     func createCirclePhysicsBody(for entity: Entity,
                                  withRadius radius: CGFloat,
                                  at position: CGPoint) -> AbstractArkPhysicsBody {
-        let newPhysicsBody = ArkSKPhysicsBody(circleOf: radius, at: position)
+        let newPhysicsBody = physicsBodyFactory.createCirclePhysicsBody(for: entity, radius: radius, at: position)
         addBody(for: entity, bodyToAdd: newPhysicsBody)
         return newPhysicsBody
     }
@@ -47,7 +56,15 @@ class SKPhysicsScene: AbstractArkPhysicsScene {
     func createRectanglePhysicsBody(for entity: Entity,
                                     withSize size: CGSize,
                                     at position: CGPoint) -> AbstractArkPhysicsBody {
-        let newPhysicsBody = ArkSKPhysicsBody(rectangleOf: size, at: position)
+        let newPhysicsBody = physicsBodyFactory.createRectanglePhysicsBody(for: entity, size: size, at: position)
+        addBody(for: entity, bodyToAdd: newPhysicsBody)
+        return newPhysicsBody
+    }
+
+    func createPolygonPhysicsBody(for entity: Entity,
+                                  withVertices vertices: [CGPoint],
+                                  at position: CGPoint) -> any AbstractArkPhysicsBody {
+        let newPhysicsBody = physicsBodyFactory.createPolygonPhysicsBody(for: entity, vertices: vertices, at: position)
         addBody(for: entity, bodyToAdd: newPhysicsBody)
         return newPhysicsBody
     }
@@ -71,7 +88,7 @@ class SKPhysicsScene: AbstractArkPhysicsScene {
         physicsBodyManager.applyAngularImpulse(angularImpulse, to: entity)
     }
 
-    func addBody(for entity: Entity, bodyToAdd: ArkSKPhysicsBody) {
+    func addBody(for entity: Entity, bodyToAdd: any AbstractArkSKPhysicsBody) {
         if physicsBodyManager.addBody(for: entity, body: bodyToAdd) {
             basePhysicsScene.addChild(bodyToAdd.node)
         }
