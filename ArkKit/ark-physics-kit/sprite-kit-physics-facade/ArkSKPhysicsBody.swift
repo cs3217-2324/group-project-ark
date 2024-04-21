@@ -1,8 +1,9 @@
 import SpriteKit
 
-class ArkSKPhysicsBody: AbstractArkPhysicsBody {
+class ArkSKPhysicsBody: AbstractArkSKPhysicsBody {
     private(set) var node: SKNode
     private let nodeNoPhysicsBodyFailureMessage = "SKNode does not contain an associated SKPhysicsBody."
+    private let physicsBodyFailedToCreateMessage = "Failed to create an SKPhysicsBody."
 
     init(rectangleOf size: CGSize, at position: CGPoint = .zero) {
         let physicsBody = SKPhysicsBody(rectangleOf: size)
@@ -15,6 +16,24 @@ class ArkSKPhysicsBody: AbstractArkPhysicsBody {
         let physicsBody = SKPhysicsBody(circleOfRadius: radius)
         node = SKNode()
         node.position = position
+        node.physicsBody = physicsBody
+    }
+
+    init(polygonOf vertices: [CGPoint], at position: CGPoint = .zero) {
+        guard vertices.count >= 3 else {
+            self.node = SKNode()
+            assertionFailure(physicsBodyFailedToCreateMessage)
+            return
+        }
+
+        node = SKNode()
+        node.position = position
+
+        let cgPath = CGMutablePath()
+        cgPath.addLines(between: vertices)
+        cgPath.closeSubpath()
+
+        let physicsBody = SKPhysicsBody(polygonFrom: cgPath)
         node.physicsBody = physicsBody
     }
 

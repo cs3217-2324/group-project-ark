@@ -3,10 +3,14 @@
  *
  * `ArkBlueprint` is effectively the blueprint struct that will be read to return an `Ark` game instance.
  */
-struct ArkBlueprint<AudioEnum: ArkAudioEnum> {
+struct ArkBlueprint<ExternalResources: ArkExternalResources> {
     private(set) var rules: [any Rule] = []
     private(set) var setupFunctions: [ArkStateSetupDelegate] = []
-    private(set) var soundMapping: [AudioEnum: any Sound]?
+    private(set) var soundMapping: [ExternalResources.AudioEnum: any Sound]?
+    private(set) var networkPlayableInfo: ArkNetworkPlayableInfo?
+
+    // if there is player specific setup
+    private(set) var playerSpecificSetupFunctions: [ArkStateSetupDelegate] = []
 
     // game world size
     private(set) var frameWidth: Double
@@ -21,7 +25,7 @@ struct ArkBlueprint<AudioEnum: ArkAudioEnum> {
         return newSelf
     }
 
-    func withAudio(_ soundMapping: [AudioEnum: any Sound]) -> Self {
+    func withAudio(_ soundMapping: [ExternalResources.AudioEnum: any Sound]) -> Self {
         guard self.soundMapping == nil else {
             assertionFailure("Audio has already been initialized!")
             return self
@@ -35,7 +39,7 @@ struct ArkBlueprint<AudioEnum: ArkAudioEnum> {
     func on<Event: ArkEvent>(
         _ eventType: Event.Type,
         executeIf conditions: (ArkECSContext) -> Bool...,
-        then callback: @escaping ActionCallback<Event, AudioEnum>
+        then callback: @escaping ActionCallback<Event, ExternalResources>
     ) -> Self {
         let action = ArkEventAction(callback: callback)
         var newRules = rules
@@ -52,7 +56,7 @@ struct ArkBlueprint<AudioEnum: ArkAudioEnum> {
     func on<Event: ArkEvent>(
         _ eventType: Event.Type,
         executeIf conditions: (ArkECSContext) -> Bool...,
-        chain callbacks: ActionCallback<Event, AudioEnum>...
+        chain callbacks: ActionCallback<Event, ExternalResources>...
     ) -> Self {
         var newRules = rules
         for (i, callback) in callbacks.enumerated() {
@@ -68,7 +72,7 @@ struct ArkBlueprint<AudioEnum: ArkAudioEnum> {
         return newSelf
     }
 
-    func forEachTick(_ callback: @escaping UpdateActionCallback<AudioEnum>) -> Self {
+    func forEachTick(_ callback: @escaping GameLoopActionCallback<ExternalResources>) -> Self {
         var newSelf = self
         var newRules = rules
 
@@ -80,30 +84,35 @@ struct ArkBlueprint<AudioEnum: ArkAudioEnum> {
         return newSelf
     }
 
-    func setupMultiplayer(serviceName: String = "Ark") -> Self {
-        let fn: ArkStateSetupDelegate = { context in
-            var events = context.events
-
-            let multiplayerManager = ArkMultiplayerManager(serviceName: serviceName)
-            let multiplayerEventManager = ArkMultiplayerEventManager(arkEventManager: events,
-                                                                     networkManagerDelegate: multiplayerManager)
-            multiplayerManager.multiplayerEventManager = multiplayerEventManager
-
-            events.delegate = multiplayerEventManager
-        }
-
-        var stateSetupFunctionsCopy = setupFunctions
-        stateSetupFunctionsCopy.insert(fn, at: 0)
-
+    func supportNetworkMultiPlayer(roomName: String, numberOfPlayers: Int) -> Self {
         var newSelf = self
-        newSelf.setupFunctions = stateSetupFunctionsCopy
+        newSelf.networkPlayableInfo = ArkNetworkPlayableInfo(
+            roomName: roomName, numberOfPlayers: numberOfPlayers
+        )
         return newSelf
     }
-}
 
-/// Represents an ArkBlueprint without sounds added.
-typealias ArkBlueprintWithoutSound = ArkBlueprint<NoSound>
+    /// Only supports if Multiplayer is defined
+    /// Note: maybe we can move this into a multiplayerContext so dev defines specific player controls
+    func setupPlayer(_ fn: @escaping ArkStateSetupDelegate) -> Self {
+        var playerStateSetupFunctionsCopy = playerSpecificSetupFunctions
+        playerStateSetupFunctionsCopy.append(fn)
 
-enum NoSound: Int {
-    case none
+        var newSelf = self
+        newSelf.playerSpecificSetupFunctions = playerStateSetupFunctionsCopy
+        return newSelf
+    }
+
+    func setRole(_ role: ArkPeerRole) -> Self {
+        var newSelf = self
+        guard let originalNetworkInfo = self.networkPlayableInfo else {
+            return newSelf
+        }
+        newSelf.networkPlayableInfo = ArkNetworkPlayableInfo(
+            roomName: originalNetworkInfo.roomName,
+            numberOfPlayers: originalNetworkInfo.numberOfPlayers,
+            role: role
+        )
+        return newSelf
+    }
 }

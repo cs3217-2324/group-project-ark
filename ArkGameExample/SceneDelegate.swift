@@ -18,10 +18,14 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         window.rootViewController = RootViewController()
         window.makeKeyAndVisible()
 //        let arkBlueprint = defineArkBlueprint()
-//        let tankGameManager = TankGameManager(frameWidth: 820, frameHeight: 1_180)
-        let tankRaceGame = TankRaceGame()
-        tankRaceGame.load()
-        loadArkBlueprintToScene(tankRaceGame.blueprint, window: window)
+//        let tankGameManager = TankGameManager()
+//        loadArkBlueprintToScene(tankGameManager.blueprint, window: window)
+
+//        let tankRaceGame = TankRaceGame()
+//        loadArkBlueprintToScene(tankRaceGame.blueprint, window: window)
+
+        let snakeGame = SnakeGame()
+        loadArkBlueprintToScene(snakeGame.blueprint, window: window)
     }
 
     func sceneDidDisconnect(_ scene: UIScene) {
@@ -55,11 +59,13 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 }
 
 extension SceneDelegate {
-    func loadArkBlueprintToScene<AudioEnum: ArkAudioEnum>(_ blueprint: ArkBlueprint<AudioEnum>, window: UIWindow) {
+    func loadArkBlueprintToScene<ExternalResources: ArkExternalResources>(_ blueprint: ArkBlueprint<ExternalResources>,
+                                                                          window: UIWindow) {
         guard let rootView = window.rootViewController as? any AbstractRootView<UIView> else {
             return
         }
         ark = Ark(rootView: rootView, blueprint: blueprint)
+//        ark?.multiplayer(serviceName: "tankGame")
         ark?.start()
     }
 }

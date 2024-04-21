@@ -1,41 +1,42 @@
-protocol Action<Data, AudioEnum> {
+protocol Action<Data, ExternalResources> {
     associatedtype Data
-    associatedtype AudioEnum: ArkAudioEnum
+    associatedtype ExternalResources: ArkExternalResources
     var priority: Int { get }
 
-    func execute(_ data: Data, context: ArkActionContext<AudioEnum>)
+    func execute(_ data: Data, context: ArkActionContext<ExternalResources>)
 }
 
-struct ArkEventAction<Event: ArkEvent, AudioEnum: ArkAudioEnum>: Action {
-    let callback: ActionCallback<Event, AudioEnum>
+struct ArkEventAction<Event: ArkEvent, ExternalResources: ArkExternalResources>: Action {
+    let callback: ActionCallback<Event, ExternalResources>
     let priority: Int
 
-    init(callback: @escaping ActionCallback<Event, AudioEnum>, priority: Int = 0) {
+    init(callback: @escaping ActionCallback<Event, ExternalResources>, priority: Int = 0) {
         self.callback = callback
         self.priority = priority
     }
     func execute(_ data: Event,
-                 context: ArkActionContext<AudioEnum>) {
+                 context: ArkActionContext<ExternalResources>) {
         callback(data, context)
     }
 }
 
-struct ArkTickAction<AudioEnum: ArkAudioEnum>: Action {
-    typealias DeltaTime = Double
-
-    let callback: UpdateActionCallback<AudioEnum>
+struct ArkTickAction<ExternalResources: ArkExternalResources>: Action {
+    let callback: GameLoopActionCallback<ExternalResources>
     let priority: Int
 
-    init(callback: @escaping UpdateActionCallback<AudioEnum>, priority: Int = 0) {
+    init(callback: @escaping GameLoopActionCallback<ExternalResources>, priority: Int = 0) {
         self.callback = callback
         self.priority = priority
     }
 
-    func execute(_ data: DeltaTime,
-                 context: ArkActionContext<AudioEnum>) {
+    func execute(_ data: ArkTimeFacade,
+                 context: ArkActionContext<ExternalResources>) {
         callback(data, context)
     }
 }
 
-typealias ActionCallback<Event: ArkEvent, AudioEnum: ArkAudioEnum> = (Event, ArkActionContext<AudioEnum>) -> Void
-typealias UpdateActionCallback<AudioEnum: ArkAudioEnum> = (Double, ArkActionContext<AudioEnum>) -> Void
+typealias ActionCallback<Event: ArkEvent, ExternalResources: ArkExternalResources> =
+(Event, ArkActionContext<ExternalResources>) -> Void
+
+typealias GameLoopActionCallback<ExternalResources: ArkExternalResources> =
+(ArkTimeFacade, ArkActionContext<ExternalResources>) -> Void
